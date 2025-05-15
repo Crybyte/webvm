@@ -1,42 +1,38 @@
 FROM docker.io/i386/alpine:3.17
-# Install required packages
 
-# Enable testing repository for specific packages
+# Update package repositories and install base packages
 RUN echo -e "\n@testing https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-RUN apk update && apk add alpine-base udev-init-scripts udev-init-scripts-openrc eudev xorg-server xf86-input-libinput lightdm i3wm font-dejavu xrandr xev bash
+RUN apk update && apk add \
+    xorg-server \
+    xf86-input-libinput \
+    i3wm \
+    font-dejavu \
+    xrandr \
+    xev \
+    bash \
+    dbus
 
-# Setup OpenRC init scripts for services
-RUN rc-update add bootmisc boot && \
-    rc-update add udev sysinit && \
-    rc-update add udev-trigger sysinit && \
-    rc-update add udev-settle sysinit && \
-    rc-update add udev-postmount default && \
-    rc-update add dbus default && \
-    rc-update add lightdm default
-
-# Add a user with bash shell
+# Add a non-root user and set up permissions
 RUN adduser -D -s /bin/bash user && echo 'user:password' | chpasswd
+RUN addgroup input 2>/dev/null || true
+RUN addgroup video 2>/dev/null || true
+RUN adduser user input
+RUN adduser user video
 
-# Set root password
-RUN echo 'root:password' | chpasswd
-
-# Configure LightDM to autologin user with i3 session
-RUN sed -i "s/#autologin-user=/autologin-user=user/g" /etc/lightdm/lightdm.conf && \
-    sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/g" /etc/lightdm/lightdm.conf && \
-    sed -i "s/#autologin-session=/autologin-session=i3/g" /etc/lightdm/lightdm.conf
-
-# Install terminal apps (including requested curl and neofetch)
+# Install additional terminal and GUI apps
 RUN apk add vim python3 nodejs gcc neovim curl neofetch sudo
-
-# Install GUI apps
 RUN apk add xpdf rofi gvim gedit xterm pcmanfm feh polybar thunar sgt-puzzles@testing
 
-# Fix broken desktop files in sgt-puzzles
+# Fix sgt-puzzles desktop files
 RUN sed -i 's/Exec=sgt-/Exec=/' /usr/share/applications/sgt-*.desktop
 
-# Install shadow for usermod and add user to wheel group for sudo privileges
-RUN apk add shadow
-RUN usermod -aG wheel user
+# Create a startup script to launch Xorg and i3
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'export DISPLAY=:0' >> /start.sh && \
+    echo 'Xorg :0 &' >> /start.sh && \
+    echo 'sleep 1' >> /start.sh && \
+    echo 'dbus-run-session i3' >> /start.sh && \
+    chmod +x /start.sh
 
-# Start the init system to enable the graphical interface
-CMD ["/sbin/init"]
+# Set the container to run the startup script
+CMD ["/start.sh"]
