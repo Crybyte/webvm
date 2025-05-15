@@ -1,38 +1,12 @@
-FROM docker.io/i386/alpine:3.17
-
-# Update package repositories and install base packages
-RUN echo -e "\n@testing https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-RUN apk update && apk add \
-    xorg-server \
-    xf86-input-libinput \
-    i3wm \
-    font-dejavu \
-    xrandr \
-    xev \
-    bash \
-    dbus
-
-# Add a non-root user and set up permissions
-RUN adduser -D -s /bin/bash user && echo 'user:password' | chpasswd
-RUN addgroup input 2>/dev/null || true
-RUN addgroup video 2>/dev/null || true
-RUN adduser user input
-RUN adduser user video
-
-# Install additional terminal and GUI apps
-RUN apk add vim python3 nodejs gcc neovim curl neofetch sudo
-RUN apk add xpdf rofi gvim gedit xterm pcmanfm feh polybar thunar sgt-puzzles@testing
-
-# Fix sgt-puzzles desktop files
-RUN sed -i 's/Exec=sgt-/Exec=/' /usr/share/applications/sgt-*.desktop
-
-# Create a startup script to launch Xorg and i3
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'export DISPLAY=:0' >> /start.sh && \
-    echo 'Xorg :0 &' >> /start.sh && \
-    echo 'sleep 1' >> /start.sh && \
-    echo 'dbus-run-session i3' >> /start.sh && \
-    chmod +x /start.sh
-
-# Set the container to run the startup script
-CMD ["/start.sh"]
+FROM i386/alpine:latest
+RUN apk update && apk upgrade
+RUN apk add --no-cache neofetch vim neovim sudo curl git bash tmux htop tree wget unzip
+RUN adduser -D -s /bin/bash user && \
+    addgroup user wheel && \
+    echo 'user:password' | chpasswd && \
+    echo 'root:password' | chpasswd && \
+    echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
+WORKDIR /home/user
+ENV HOME="/home/user" TERM="xterm" USER="user" SHELL="/bin/bash" EDITOR="vim" LANG="C" LC_ALL="C"
+USER user
+CMD ["/bin/bash"]
