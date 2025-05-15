@@ -1,23 +1,42 @@
 FROM docker.io/i386/alpine:3.17
 # Install required packages
 
+# Enable testing repository for specific packages
 RUN echo -e "\n@testing https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 RUN apk update && apk add alpine-base udev-init-scripts udev-init-scripts-openrc eudev xorg-server xf86-input-libinput lightdm i3wm font-dejavu xrandr xev bash
-# Setup the init script
-RUN rc-update add bootmisc boot && rc-update add udev sysinit && rc-update add udev-trigger sysinit && rc-update add udev-settle sysinit && rc-update add udev-postmount default && rc-update add dbus default && rc-update add lightdm default
-# Add a user
-RUN adduser -D -s /bin/bash user && echo 'user:password' | chpasswd
-# Allow root login
-RUN echo 'root:password' | chpasswd
-# Configure lightdm to start i3
-RUN sed -i "s/#autologin-user=/autologin-user=user/g" /etc/lightdm/lightdm.conf && sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/g" /etc/lightdm/lightdm.conf && sed -i "s/#autologin-session=/autologin-session=i3/g" /etc/lightdm/lightdm.conf
 
-# terminal apps
-RUN apk add vim python3 nodejs gcc
-# gui apps
+# Setup OpenRC init scripts for services
+RUN rc-update add bootmisc boot && \
+    rc-update add udev sysinit && \
+    rc-update add udev-trigger sysinit && \
+    rc-update add udev-settle sysinit && \
+    rc-update add udev-postmount default && \
+    rc-update add dbus default && \
+    rc-update add lightdm default
+
+# Add a user with bash shell
+RUN adduser -D -s /bin/bash user && echo 'user:password' | chpasswd
+
+# Set root password
+RUN echo 'root:password' | chpasswd
+
+# Configure LightDM to autologin user with i3 session
+RUN sed -i "s/#autologin-user=/autologin-user=user/g" /etc/lightdm/lightdm.conf && \
+    sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/g" /etc/lightdm/lightdm.conf && \
+    sed -i "s/#autologin-session=/autologin-session=i3/g" /etc/lightdm/lightdm.conf
+
+# Install terminal apps (including requested curl and neofetch)
+RUN apk add vim python3 nodejs gcc neovim curl neofetch sudo
+
+# Install GUI apps
 RUN apk add xpdf rofi gvim gedit xterm pcmanfm feh polybar thunar sgt-puzzles@testing
 
-# the sgt-puzzles package has broken desktop files...
+# Fix broken desktop files in sgt-puzzles
 RUN sed -i 's/Exec=sgt-/Exec=/' /usr/share/applications/sgt-*.desktop
 
-CMD [ "/bin/sh" ]
+# Install shadow for usermod and add user to wheel group for sudo privileges
+RUN apk add shadow
+RUN usermod -aG wheel user
+
+# Start the init system to enable the graphical interface
+CMD ["/sbin/init"]
