@@ -1,15 +1,21 @@
 FROM i386/alpine:latest
-# Set up repositories including edge/community
-RUN echo -e "http://dl-cdn.alpinelinux.org/alpine/latest-stable/main\nhttp://dl-cdn.alpinelinux.org/alpine/latest-stable/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/community" > /etc/apk/repositories && \
-    apk update && \
-    apk upgrade
-# Install packages, including neofetch
-RUN apk add --no-cache neofetch vim neovim sudo curl git bash tmux htop tree wget unzip
+
+# Update and upgrade using default repositories
+RUN apk update && apk upgrade
+
+# Install neofetch from edge community repository
+RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community neofetch
+
+# Install other packages from stable repositories
+RUN apk add --no-cache vim neovim sudo curl git bash tmux htop tree wget unzip
+
+# Set up user and environment (unchanged from your original)
 RUN adduser -D -s /bin/bash user && \
     addgroup user wheel && \
     echo 'user:password' | chpasswd && \
     echo 'root:password' | chpasswd && \
     echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
+
 WORKDIR /home/user
 ENV HOME="/home/user" TERM="xterm" USER="user" SHELL="/bin/bash" EDITOR="vim" LANG="C" LC_ALL="C"
 USER user
