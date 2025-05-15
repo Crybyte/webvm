@@ -1,5 +1,9 @@
 FROM i386/alpine:latest
-RUN apk update && apk upgrade
+# Set up repositories including edge/community
+RUN echo -e "http://dl-cdn.alpinelinux.org/alpine/latest-stable/main\nhttp://dl-cdn.alpinelinux.org/alpine/latest-stable/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/community" > /etc/apk/repositories && \
+    apk update && \
+    apk upgrade
+# Install packages, including neofetch
 RUN apk add --no-cache neofetch vim neovim sudo curl git bash tmux htop tree wget unzip
 RUN adduser -D -s /bin/bash user && \
     addgroup user wheel && \
